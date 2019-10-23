@@ -1,0 +1,1 @@
+* You must have the class definition of the base model inside the directory to load the trained model.

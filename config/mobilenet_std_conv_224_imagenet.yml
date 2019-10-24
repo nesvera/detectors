@@ -4,13 +4,13 @@ MODEL:
   #NUM_CLASSES: 20
   BASE_MODEL:
     #CHECKPOINT: '/home/nesvera/Documents/neural_nets/object_detection/detectors/base_models/mobilenet_dw_224/BEST_mobilenet_dw_224.pth.tar'
-    CHECKPOINT: '/home/nesvera/Documents/neural_nets/object_detection/detectors/base_models/mobilenet.pth.tar'
+    CHECKPOINT: '/home/feaf-seat-1/Documents/nesvera/detectors/base_models/trained/BEST_mobilenet_dw.pth.tar'
   
 TRAIN:
   MAX_EPOCHS: 200
   BATCH_SIZE: 64
-  WORKERS: 2
-  PRINT_FREQ: 1
+  WORKERS: 8
+  PRINT_FREQ: 20
   OPTIMIZER:
     OPTIMIZER: 'ADAM'
     LEARNING_RATE: 0.001

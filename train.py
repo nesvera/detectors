@@ -76,7 +76,7 @@ def main():
     # ------------------------
     #       Dataloaders
     # ------------------------  
-    data_folder = "/home/nesvera/Documents/neural_nets/object_detection/a-PyTorch-Tutorial-to-Object-Detection"
+    data_folder = "/home/feaf-seat-1/Documents/nesvera/object_detection/a-PyTorch-Tutorial-to-Object-Detection"
     train_dataset = datasets.PascalVOCDataset(data_folder,
                                      split='train',
                                      keep_difficult=True)
@@ -86,17 +86,17 @@ def main():
                                    keep_difficult=True)
 
     train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=8,
+                                               batch_size=config_train_batch,
                                                shuffle=True,
                                                collate_fn=train_dataset.collate_fn,
-                                               num_workers=4,
+                                               num_workers=config_workers,
                                                pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=8,
+                                             batch_size=config_val_batch,
                                              shuffle=True,
                                              collate_fn=val_dataset.collate_fn,
-                                             num_workers=4,
+                                             num_workers=config_workers,
                                              pin_memory=True)
 
     config_num_classes = len(train_dataset.label_map)
@@ -268,6 +268,8 @@ def train(model, loader, criterion, optimizer, epoch, print_freq):
         # Update model
         optimizer.step()
 
+        epoch_loss.add_value(loss.item()) 
+
         epoch_train_time.add_value(time.time()-batch_start)       # measure train time
         partial_train_time.add_value(time.time()-batch_start)
 
@@ -286,8 +288,6 @@ def train(model, loader, criterion, optimizer, epoch, print_freq):
             # Reset measurment for each
             partial_fetch_time = utils.Average()
             partial_train_time = utils.Average()
-
-        break
 
     return epoch_loss.get_average()
 
@@ -332,8 +332,6 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
                 print()
 
                 partial_eval_time = utils.Average()
-
-            break
 
     return epoch_loss.get_average()
 

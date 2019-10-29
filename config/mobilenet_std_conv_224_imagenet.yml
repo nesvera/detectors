@@ -7,7 +7,7 @@ MODEL:
     CHECKPOINT: '/home/feaf-seat-1/Documents/nesvera/detectors/base_models/trained/BEST_mobilenet_dw.pth.tar'
   
 TRAIN:
-  MAX_EPOCHS: 200
+  MAX_EPOCHS: 600
   BATCH_SIZE: 64
   WORKERS: 8
   PRINT_FREQ: 20

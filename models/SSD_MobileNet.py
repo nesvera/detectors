@@ -4,6 +4,8 @@ import torch.nn.functional as F
 
 from math import ceil, sqrt
 
+from utils import utils
+
 #from classifiers.models import MobileNet
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -496,3 +498,71 @@ class SSDMobileNet(nn.Module):
         priors_boxes.clamp_(0,1)
 
         return priors_boxes
+
+    def detect_objects(self, pred_locs, pred_score, min_score, max_overlap, top_k):
+
+        batch_size = pred_locs.size(0)
+        n_priors = self.priors_cxcy.size(0)
+
+        pred_score = F.softmax(pred_score, dim=2)                   # [N, n_priors, n_classes]
+
+        batch_boxes = list()
+        batch_labels = list()
+        batch_scores = list()
+
+        # for each image of the batch
+        for i in range(batch_size):
+
+            # Decoded from regression format to bounding box format
+            decoded_locs = utils.gcxgcy_to_cxcy(pred_locs[i], self.priors_cxcy)
+            decoded_locs = utils.cxcy_to_xy(decoded_locs)
+
+            image_boxes = list()
+            image_labels = list()
+            image_scores = list()
+
+            # for each class
+            for c in range(1, self.num_classes):
+
+                # keep only predictions with scores above threshold
+                class_scores = pred_score[i][:, c]                      # [n_priors]
+                score_above_min = class_scores > min_score
+                n_score_above_min = score_above_min.sum().item()
+
+                if n_score_above_min == 0:
+                    continue
+
+                class_scores = class_scores[score_above_min]
+                class_decoded_locs = decoded_locs[score_above_min]
+    
+                image_boxes.append(class_decoded_locs)
+
+            # if there is no object, assign background for the image
+            if len(image_boxes) == 0:
+                image_boxes.append(torch.FloatTensor([[0, 0, 1, 1]]).to(device))
+                image_labels.append(torch.LongTensor([0]).to(device))
+                image_scores.append(torch.FloatTensor([0]).to(device))
+
+
+            # Create a single tensor
+            image_boxes = torch.cat(image_boxes, dim=0)
+            #image_labels = torch.cat(image_labels, dim=0)
+            #image_scores = torch.cat(image_scores, dim=0)
+
+            batch_boxes.append(image_boxes)
+            #batch_labels.append(image_labels)
+            #batch_scores.append(image_scores)
+        
+
+        return batch_boxes, 0, 0
+
+
+
+
+
+
+
+
+
+
+

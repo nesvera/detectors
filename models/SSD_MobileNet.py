@@ -32,6 +32,153 @@ class Conv2dBn(nn.Module):
 
         return out
 
+class MobileNetV1Conv224(nn.Module):
+    """
+    Model based on the MobileNet Architecture described in the paper 
+    "MobileNets: Efficient Convolutional Neural Networks for Mobile 
+    Vision Applications" using standard convolutional layers due to
+    the speed problems w.r.t the depthwise separable layers
+
+    Number of parameters (alpha=0.5): 
+    ...
+
+    Attributes
+    ----------
+    pretrained_weights : state_dict
+        dictionary of the model trained as a classifier
+    alpha : float
+        multiplier for the number of channels for each conv layer
+
+    Methods
+    -------
+    foward(sound=None)
+        Method used by the pytorch API, that return some feature maps
+    """
+
+    def __init__(self, pretrained_weights, alpha=0.5):
+        """
+        Parameters
+        ----------
+        name : str
+            The name of the animal
+        sound : str
+            The sound the animal makes
+        num_legs : int, optional
+            The number of legs the animal (default is 4)
+        """
+
+        super(MobileNetV1Conv224, self).__init__()
+
+        self.alpha = alpha
+        self.num_classes = num_classes
+
+        # Input tensor
+        # [N, 3, 224, 224]
+        
+        self.conv_1 = Conv2dBn(3, 
+                                ceil(self.alpha*32), 
+                                kernel_size=3, padding=1, stride=2)
+        # [N, 32, 112, 112]
+
+        self.conv_2 = Conv2dBn(ceil(self.alpha*32), 
+                                ceil(self.alpha*64), 
+                                kernel_size=3, padding=1, stride=1)
+        # [N, 64, 112, 112]
+
+        self.conv_3 = Conv2dBn(ceil(self.alpha*64), 
+                                ceil(self.alpha*128), 
+                                kernel_size=3, padding=1, stride=2)
+        # [N, 128, 56, 56]
+
+        self.conv_4 = Conv2dBn(ceil(self.alpha*128),
+                                ceil(self.alpha*128),
+                                kernel_size=3, padding=1, stride=1)
+        # [N, 128, 56, 56]
+
+        self.conv_5 = Conv2dBn(ceil(self.alpha*128),
+                                ceil(self.alpha*256),
+                                kernel_size=3, padding=1, stride=2)
+        # [N, 256, 28, 28]
+
+        self.conv_6 = Conv2dBn(ceil(self.alpha*256),
+                                ceil(self.alpha*256),
+                                kernel_size=3, padding=1, stride=1)
+        # [N, 256, 28, 28]
+
+        self.conv_7 = Conv2dBn(ceil(self.alpha*256),
+                                ceil(self.alpha*512),
+                                kernel_size=3, padding=1, stride=2)
+        # [N, 512, 14, 14]
+
+        self.conv_8 = Conv2dBn(ceil(self.alpha*512),
+                                ceil(self.alpha*512),
+                                kernel_size=3, padding=1, stride=1)
+        # [N, 512, 14, 14]
+        # repeated 5 times
+
+        self.conv_9 = Conv2dBn(ceil(self.alpha*512),
+                                ceil(self.alpha*1024),
+                                kernel_size=3, padding=1, stride=2)
+        # [N, 1024, 7, 7]
+
+        self.conv_10 = Conv2dBn(ceil(self.alpha*1024),
+                                 ceil(self.alpha*1024),
+                                 kernel_size=3, padding=4, stride=2)
+        # [N, 1024, 7, 7]
+
+        self.avg_pool = nn.AvgPool2d(kernel_size=7, padding=0, stride=1)
+        # [N, 1024, 1, 1]
+
+        # probability obtained from the keras implementation of the model
+        self.dropout = nn.Dropout(p=0.001)
+        # [N, 1024, 1, 1]
+
+        self.fc = nn.Linear(ceil(self.alpha*1024),
+                            self.num_classes)
+        # [N, 1000]
+
+        self.softmax = nn.Softmax()
+        # [N, 1000]
+
+    def forward(self, image):
+        """
+        Forward propagation.
+
+        Parameters
+        ----------
+        image : tensor
+            Images, a tensor of dimensions (N, 3, 224, 224)
+        
+        Returns
+        -------
+        out_name : tensor
+            Predictions from 
+        """
+                                                    # [N, 3,     224, 224]
+        out = self.conv_1(image)                    # [N, a*32,  112, 112]
+        out = self.conv_2(out)                      # [N, a*64,  112, 112]
+        out = self.conv_3(out)                      # [N, a*128, 56,  56]
+        out = self.conv_4(out)                      # [N, a*128, 56,  56]
+        conv_d56 = out
+
+        out = self.conv_5(out)                      # [N, a*256, 28,  28]
+        out = self.conv_6(out)                      # [N, a*256, 28,  28]
+        out = self.conv_7(out)                      # [N, a*512, 14,  14]
+
+        out = self.conv_8(out)                      # [N, a*512, 14, 14]
+
+        out = self.conv_9(out)                      # [N, a*1024, 7, 7]
+        out = self.conv_10(out)                     # [N, a*1024, 7, 7]
+        out = self.avg_pool(out)                    # [N, a*1024, 1, 1]
+
+        out = out.view(out.size(0), -1)             # [N, a*1024]
+        out = self.dropout(out)                     # [N, a*1024]
+        out = self.fc(out)                          # [N, n_classes]
+
+        out = self.softmax(out)                     # [N, n_classes]
+
+        return out
+
 class Conv2dDW(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size, padding, stride):

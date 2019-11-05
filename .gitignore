@@ -7,7 +7,7 @@ __pycache__/
 *.h5
 *.pb
 **/experiments
-**/base_models
+**/base_weights
 
 
 # Dasets inside dataset folder

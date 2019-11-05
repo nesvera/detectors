@@ -1,0 +1,3 @@
+[submodule "classifiers"]
+	path = classifiers
+	url = https://github.com/nesvera/classifiers.git

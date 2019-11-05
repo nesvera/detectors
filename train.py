@@ -76,7 +76,7 @@ def main():
     # ------------------------
     #       Dataloaders
     # ------------------------  
-    data_folder = "/home/feaf-seat-1/Documents/nesvera/object_detection/a-PyTorch-Tutorial-to-Object-Detection"
+    data_folder = "/home/nesvera/Documents/neural_nets/object_detection/a-PyTorch-Tutorial-to-Object-Detection"
     train_dataset = datasets.PascalVOCDataset(data_folder,
                                      split='train',
                                      keep_difficult=True)
@@ -116,6 +116,8 @@ def main():
         # load weights from trained classifier as a state_dict
         base_pretrained = torch.load(config_base_model_path, map_location=device)
 
+        base_pretrained = None
+
         # build detector
         model = SSD_MobileNet.SSDMobileNet(base_pretrained, config_num_classes)
 
@@ -147,12 +149,17 @@ def main():
     priors_boxes = model.create_prior()
     criterion = loss_function.MultiBoxLoss(priors_cxcy=priors_boxes)
 
+    prior_b = priors_boxes
+    print("prior", prior_b.size())
+
     # summarize the model
     print()
     print("----------------------------------------------------------------")
     print("--------------------- Model summary ----------------------------")
     print("----------------------------------------------------------------")
     summary(model, (3, 224, 224))
+
+    input()
 
     # Keep track for improvement
     best_loss = 9000.

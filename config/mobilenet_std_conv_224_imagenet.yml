@@ -3,8 +3,7 @@ MODEL:
   IMAGE_SIZE: [224, 224, 3]
   #NUM_CLASSES: 20
   BASE_MODEL:
-    #CHECKPOINT: '/home/nesvera/Documents/neural_nets/object_detection/detectors/base_models/mobilenet_dw_224/BEST_mobilenet_dw_224.pth.tar'
-    CHECKPOINT: '/home/feaf-seat-1/Documents/nesvera/detectors/base_models/trained/BEST_mobilenet_dw.pth.tar'
+    CHECKPOINT: '/home/nesvera/Documents/neural_nets/object_detection/detectors/base_models/mobilenet_standard_conv_224/base_model.pth.tar'
   
 TRAIN:
   MAX_EPOCHS: 600

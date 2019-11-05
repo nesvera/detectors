@@ -70,7 +70,6 @@ class MobileNetV1Conv224(nn.Module):
         super(MobileNetV1Conv224, self).__init__()
 
         self.alpha = alpha
-        self.num_classes = num_classes
 
         # Input tensor
         # [N, 3, 224, 224]
@@ -126,206 +125,8 @@ class MobileNetV1Conv224(nn.Module):
                                  kernel_size=3, padding=4, stride=2)
         # [N, 1024, 7, 7]
 
-        self.avg_pool = nn.AvgPool2d(kernel_size=7, padding=0, stride=1)
-        # [N, 1024, 1, 1]
-
-        # probability obtained from the keras implementation of the model
-        self.dropout = nn.Dropout(p=0.001)
-        # [N, 1024, 1, 1]
-
-        self.fc = nn.Linear(ceil(self.alpha*1024),
-                            self.num_classes)
-        # [N, 1000]
-
-        self.softmax = nn.Softmax()
-        # [N, 1000]
-
-    def forward(self, image):
-        """
-        Forward propagation.
-
-        Parameters
-        ----------
-        image : tensor
-            Images, a tensor of dimensions (N, 3, 224, 224)
-        
-        Returns
-        -------
-        out_name : tensor
-            Predictions from 
-        """
-                                                    # [N, 3,     224, 224]
-        out = self.conv_1(image)                    # [N, a*32,  112, 112]
-        out = self.conv_2(out)                      # [N, a*64,  112, 112]
-        out = self.conv_3(out)                      # [N, a*128, 56,  56]
-        out = self.conv_4(out)                      # [N, a*128, 56,  56]
-        conv_d56 = out
-
-        out = self.conv_5(out)                      # [N, a*256, 28,  28]
-        out = self.conv_6(out)                      # [N, a*256, 28,  28]
-        out = self.conv_7(out)                      # [N, a*512, 14,  14]
-
-        out = self.conv_8(out)                      # [N, a*512, 14, 14]
-
-        out = self.conv_9(out)                      # [N, a*1024, 7, 7]
-        out = self.conv_10(out)                     # [N, a*1024, 7, 7]
-        out = self.avg_pool(out)                    # [N, a*1024, 1, 1]
-
-        out = out.view(out.size(0), -1)             # [N, a*1024]
-        out = self.dropout(out)                     # [N, a*1024]
-        out = self.fc(out)                          # [N, n_classes]
-
-        out = self.softmax(out)                     # [N, n_classes]
-
-        return out
-
-class Conv2dDW(nn.Module):
-
-    def __init__(self, in_channels, out_channels, kernel_size, padding, stride):
-        super(Conv2dDW, self).__init__()
-
-        # depthwise layer
-        self.conv_dw = nn.Conv2d(in_channels,
-                                 in_channels,
-                                 groups=in_channels,
-                                 kernel_size=kernel_size,
-                                 padding=padding,
-                                 stride=stride,
-                                 bias=False)
-
-        # batchnorm that follows the depthwise layer
-        self.conv_dw_bn = nn.BatchNorm2d(in_channels)
-
-        # pointwise layer
-        self.conv_pw = nn.Conv2d(in_channels,
-                                 out_channels,
-                                 kernel_size=1,
-                                 padding=0,
-                                 stride=1,
-                                 bias=False)
-
-        # batchnorm that follows th pointwise layer
-        self.conv_pw_bn = nn.BatchNorm2d(out_channels)
-
-    def forward(self, x):
-        # depthwise convolution
-        out = self.conv_dw(x)
-        out = self.conv_dw_bn(out)
-        out = F.relu(out)
-
-        # pointwise convolution
-        out = self.conv_pw(out)
-        out = self.conv_pw_bn(out)
-        out = F.relu(out)
-
-        return out
-
-class MobileNetV1Dw224(nn.Module):
-    """
-    MobileNet Architecture described in the paper "MobileNets: Efficient 
-    Convolutional Neural Networks for Mobile Vision Applications" using
-    standard convolutional layers
-    https://arxiv.org/pdf/1704.04861.pdf
-
-    Total params:  4,231,976 
-    Keras version: 4,253,864
-    Paper mentioned 4.2 Million
-
-    The number of parameters from a batchnorm layer presented in the keras
-    summary of the full mobilenet model, is twice the number of parameters
-    from a batchnorm layer in pytorch. This could explain the difference
-    in the size of the models.
-
-    ...
-
-    Attributes
-    ----------
-    says_str : str
-        a formatted string to print out what the animal says
-    name : str
-        the name of the animal
-    sound : str
-        the sound that the animal makes
-    num_legs : int
-        the number of legs the animal has (default 4)
-
-    Methods
-    -------
-    says(sound=None)
-        Prints the animals name and what sound it makes
-    """
-
-    def __init__(self, pretrained_weights, alpha=1.0):
-        """
-        Parameters
-        ----------
-        name : str
-            The name of the animal
-        sound : str
-            The sound the animal makes
-        num_legs : int, optional
-            The number of legs the animal (default is 4)
-        """
-
-        super(MobileNetV1Dw224, self).__init__()
-
-        self.alpha = 1.0
-
-        # Input tensor
-        # [N, 3, 224, 224]
-        
-        self.conv_1 = Conv2dBn(3, 
-                               ceil(self.alpha*32), 
-                               kernel_size=3, padding=1, stride=2)
-        # [N, 32, 112, 112]
-
-        self.conv_2 = Conv2dDW(ceil(self.alpha*32), 
-                               ceil(self.alpha*64), 
-                               kernel_size=3, padding=1, stride=1)
-        # [N, 64, 112, 112]
-
-        self.conv_3 = Conv2dDW(ceil(self.alpha*64), 
-                               ceil(self.alpha*128), 
-                               kernel_size=3, padding=1, stride=2)
-        # [N, 128, 56, 56]
-
-        self.conv_4 = Conv2dDW(ceil(self.alpha*128),
-                               ceil(self.alpha*128),
-                               kernel_size=3, padding=1, stride=1)
-        # [N, 128, 56, 56]
-
-        self.conv_5 = Conv2dDW(ceil(self.alpha*128),
-                               ceil(self.alpha*256),
-                               kernel_size=3, padding=1, stride=2)
-        # [N, 256, 28, 28]
-
-        self.conv_6 = Conv2dDW(ceil(self.alpha*256),
-                               ceil(self.alpha*256),
-                               kernel_size=3, padding=1, stride=1)
-        # [N, 256, 28, 28]
-
-        self.conv_7 = Conv2dDW(ceil(self.alpha*256),
-                               ceil(self.alpha*512),
-                               kernel_size=3, padding=1, stride=2)
-        # [N, 512, 14, 14]
-
-        self.conv_8 = Conv2dDW(ceil(self.alpha*512),
-                               ceil(self.alpha*512),
-                               kernel_size=3, padding=1, stride=1)
-        # [N, 512, 14, 14]
-        # repeated 5 times
-
-        self.conv_9 = Conv2dDW(ceil(self.alpha*512),
-                               ceil(self.alpha*1024),
-                               kernel_size=3, padding=1, stride=2)
-        # [N, 1024, 7, 7]
-
-        self.conv_10 = Conv2dDW(ceil(self.alpha*1024),
-                                ceil(self.alpha*1024),
-                                kernel_size=3, padding=4, stride=2)
-        # [N, 1024, 7, 7]
-
-        self.load_pretrained_layers(pretrained_weights)
+        if pretrained_weights is not None:
+            self.load_pretrained_layers(pretrained_weights)
 
     def load_pretrained_layers(self, pretrained_weights):
         
@@ -360,57 +161,58 @@ class MobileNetV1Dw224(nn.Module):
         out = self.conv_2(out)                      # [N, a*64,  112, 112]
         out = self.conv_3(out)                      # [N, a*128, 56,  56]
         out = self.conv_4(out)                      # [N, a*128, 56,  56]
-        conv_d56 = out              # [N, a*128, 56, 56]
+        conv_d56 = out
 
         out = self.conv_5(out)                      # [N, a*256, 28,  28]
         out = self.conv_6(out)                      # [N, a*256, 28,  28]
-        conv_d28 = out              # [N, a*256, 28, 28]
-
+        conv_d28 = out
+        
         out = self.conv_7(out)                      # [N, a*512, 14,  14]
-        for i in range(5):
-            out = self.conv_8(out)                  # [N, a*512, 14, 14]
-        conv_d14 = out              # [N, a*512, 14, 14]
+        out = self.conv_8(out)                      # [N, a*512, 14, 14]
+        conv_d14 = out
 
         out = self.conv_9(out)                      # [N, a*1024, 7, 7]
         out = self.conv_10(out)                     # [N, a*1024, 7, 7]
-        conv_d7 = out               # [N, a*1024, 7, 7]
+        conv_d7 = out
 
         return conv_d56, conv_d28, conv_d14, conv_d7
 
 class AuxiliaryConvolutions(nn.Module):
 
-    def __init__(self):
+    def __init__(self, alpha=0.5):
         super(AuxiliaryConvolutions, self).__init__()
+
+        self.alpha = alpha
 
         # [N, 1024, 7, 7]
 
         # add auxiliary convolutions
-        self.aux_conv_1_1 = nn.Conv2d(1024,
+        self.aux_conv_1_1 = Conv2dBn(512,
                                      256,
                                      kernel_size=1, padding=0, stride=1)
         # [N, 256, 7, 7]
 
-        self.aux_conv_1_2 = nn.Conv2d(256,
+        self.aux_conv_1_2 = Conv2dBn(256,
                                      512,
                                      kernel_size=3, padding=0, stride=1)
         # [N, 512, 5, 5]
 
-        self.aux_conv_2_1 = nn.Conv2d(512,
+        self.aux_conv_2_1 = Conv2dBn(512,
                                      256,
                                      kernel_size=1, padding=0, stride=1)
         # [N, 256, 5, 5]
 
-        self.aux_conv_2_2 = nn.Conv2d(256,
+        self.aux_conv_2_2 = Conv2dBn(256,
                                      256,
                                      kernel_size=3, padding=0, stride=1)
         # [N, 256, 3, 3]
 
-        self.aux_conv_3_1 = nn.Conv2d(256,
+        self.aux_conv_3_1 = Conv2dBn(256,
                                      128,
                                      kernel_size=1, padding=0, stride=1)
         # [N, 128, 3, 3]
 
-        self.aux_conv_3_2 = nn.Conv2d(128,
+        self.aux_conv_3_2 = Conv2dBn(128,
                                      256,
                                      kernel_size=3, padding=0, stride=1)
         # [N, 256, 1, 1]                                             
@@ -447,54 +249,56 @@ class PredictionConvolutions(nn.Module):
                    'conv_d1':  4}
 
         # Localization prediction convolutions (predict offsets w.r.t prior-boxes)
-        self.loc_conv_d56 = nn.Conv2d(128, n_boxes['conv_d56']*4, kernel_size=3, padding=1)
-        self.loc_conv_d28 = nn.Conv2d(256, n_boxes['conv_d28']*4, kernel_size=3, padding=1)
-        self.loc_conv_d14 = nn.Conv2d(512, n_boxes['conv_d14']*4, kernel_size=3, padding=1)
-        self.loc_conv_d7  = nn.Conv2d(1024, n_boxes['conv_d7']*4,  kernel_size=3, padding=1)
+        self.loc_conv_d56 = nn.Conv2d(64, n_boxes['conv_d56']*4, kernel_size=3, padding=1)
+        self.loc_conv_d28 = nn.Conv2d(128, n_boxes['conv_d28']*4, kernel_size=3, padding=1)
+        self.loc_conv_d14 = nn.Conv2d(256, n_boxes['conv_d14']*4, kernel_size=3, padding=1)
+        self.loc_conv_d7  = nn.Conv2d(512, n_boxes['conv_d7']*4,  kernel_size=3, padding=1)
         self.loc_conv_d5  = nn.Conv2d(512, n_boxes['conv_d5']*4,  kernel_size=3, padding=1)
         self.loc_conv_d3  = nn.Conv2d(256, n_boxes['conv_d3']*4,  kernel_size=3, padding=1)
         self.loc_conv_d1  = nn.Conv2d(256, n_boxes['conv_d1']*4,  kernel_size=3, padding=1)
 
         # Class prediction convolutions (predict classes in localization boxes)
-        self.cl_conv_d56 = nn.Conv2d(128, n_boxes['conv_d56']*n_classes, kernel_size=3, padding=1)
-        self.cl_conv_d28 = nn.Conv2d(256, n_boxes['conv_d28']*n_classes, kernel_size=3, padding=1)
-        self.cl_conv_d14 = nn.Conv2d(512, n_boxes['conv_d14']*n_classes, kernel_size=3, padding=1)
-        self.cl_conv_d7 =  nn.Conv2d(1024, n_boxes['conv_d7']*n_classes,  kernel_size=3, padding=1)
+        self.cl_conv_d56 = nn.Conv2d(64, n_boxes['conv_d56']*n_classes, kernel_size=3, padding=1)
+        self.cl_conv_d28 = nn.Conv2d(128, n_boxes['conv_d28']*n_classes, kernel_size=3, padding=1)
+        self.cl_conv_d14 = nn.Conv2d(256, n_boxes['conv_d14']*n_classes, kernel_size=3, padding=1)
+        self.cl_conv_d7 =  nn.Conv2d(512, n_boxes['conv_d7']*n_classes,  kernel_size=3, padding=1)
         self.cl_conv_d5 =  nn.Conv2d(512, n_boxes['conv_d5']*n_classes,  kernel_size=3, padding=1)
         self.cl_conv_d3 =  nn.Conv2d(256, n_boxes['conv_d3']*n_classes,  kernel_size=3, padding=1)
         self.cl_conv_d1 =  nn.Conv2d(256, n_boxes['conv_d1']*n_classes,  kernel_size=3, padding=1)
+
+        self.loc_activation = nn.Hardtanh()
 
     def forward(self, conv_d56, conv_d28, conv_d14, conv_d7, conv_d5, conv_d3, conv_d1):
 
         batch_size = conv_d56.size(0)
 
         # Predict localization boxes' bounds (as offsets w.r.t prior-boxes)
-        loc_pred_conv_d56 = self.loc_conv_d56(conv_d56)                         # [N, b*4, 56, 56]
+        loc_pred_conv_d56 = self.loc_activation(self.loc_conv_d56(conv_d56))    # [N, b*4, 56, 56]
         loc_pred_conv_d56 = loc_pred_conv_d56.permute(0, 2, 3, 1).contiguous()  # [N, 56, 56, b*4]
         loc_pred_conv_d56 = loc_pred_conv_d56.view(batch_size, -1, 4)           # [N, 6272, 4]
 
 
-        loc_pred_conv_d28 = self.loc_conv_d28(conv_d28)                         # [N, b*4, 28, 28]
+        loc_pred_conv_d28 = self.loc_activation(self.loc_conv_d28(conv_d28))    # [N, b*4, 28, 28]
         loc_pred_conv_d28 = loc_pred_conv_d28.permute(0, 2, 3, 1).contiguous()  # [N, 28, 28, b*4]
         loc_pred_conv_d28 = loc_pred_conv_d28.view(batch_size, -1, 4)           # [N, 4704, 4]
 
-        loc_pred_conv_d14 = self.loc_conv_d14(conv_d14)                         # [N, b*4, 14, 14]
+        loc_pred_conv_d14 = self.loc_activation(self.loc_conv_d14(conv_d14))    # [N, b*4, 14, 14]
         loc_pred_conv_d14 = loc_pred_conv_d14.permute(0, 2, 3, 1).contiguous()  # [N, 14, 14, b*4]
         loc_pred_conv_d14 = loc_pred_conv_d14.view(batch_size, -1, 4)           # [N, 1176, 4]
 
-        loc_pred_conv_d7 = self.loc_conv_d7(conv_d7)                            # [N, b*4, 7, 7]
+        loc_pred_conv_d7 = self.loc_activation(self.loc_conv_d7(conv_d7))       # [N, b*4, 7, 7]
         loc_pred_conv_d7 = loc_pred_conv_d7.permute(0, 2, 3, 1).contiguous()    # [N, 7, 7, b*4]
         loc_pred_conv_d7 = loc_pred_conv_d7.view(batch_size, -1, 4)             # [N, 294, 4]
 
-        loc_pred_conv_d5 = self.loc_conv_d5(conv_d5)                            # [N, b*4, 5, 5]
+        loc_pred_conv_d5 = self.loc_activation(self.loc_conv_d5(conv_d5))       # [N, b*4, 5, 5]
         loc_pred_conv_d5 = loc_pred_conv_d5.permute(0, 2, 3, 1).contiguous()    # [N, 5, 5, b*4]
         loc_pred_conv_d5 = loc_pred_conv_d5.view(batch_size, -1, 4)             # [N, 150, 4]
 
-        loc_pred_conv_d3 = self.loc_conv_d3(conv_d3)                            # [N, b*4, 3, 3]
+        loc_pred_conv_d3 = self.loc_activation(self.loc_conv_d3(conv_d3))       # [N, b*4, 3, 3]
         loc_pred_conv_d3 = loc_pred_conv_d3.permute(0, 2, 3, 1).contiguous()    # [N, 3, 3, b*4]
         loc_pred_conv_d3 = loc_pred_conv_d3.view(batch_size, -1, 4)             # [N, 36, 4]
 
-        loc_pred_conv_d1 = self.loc_conv_d1(conv_d1)                            # [N, b*4, 1, 1]
+        loc_pred_conv_d1 = self.loc_activation(self.loc_conv_d1(conv_d1))       # [N, b*4, 1, 1]
         loc_pred_conv_d1 = loc_pred_conv_d1.permute(0, 2, 3, 1).contiguous()    # [N, 1, 1, b*4]
         loc_pred_conv_d1 = loc_pred_conv_d1.view(batch_size, -1, 4)             # [N, b*4, 4]
 
@@ -554,21 +358,22 @@ class SSDMobileNet(nn.Module):
             print("Error: num_class must be a positive number")
             exit(1)
 
-        # remove last layers from the classifier
-        #self.base = BaseMobileNet(base_pretrained)
-        self.base_model = MobileNetV1Dw224(base_pretrained)
-        self.aux_convs = AuxiliaryConvolutions()
-        self.pred_convs = PredictionConvolutions(num_classes)
-
         self.num_classes = num_classes
+
+        self.base_model = MobileNetV1Conv224(base_pretrained, alpha=0.5)
+        self.aux_convs = AuxiliaryConvolutions(alpha=0.5)
+        self.pred_convs = PredictionConvolutions(num_classes)
 
         self.priors_cxcy = self.create_prior()
 
     def forward(self, image):
         
         conv_d56, conv_d28, conv_d14, conv_d7 = self.base_model(image)
-        conv_d5, conv_d3, conv_d1 = self.aux_convs(conv_d7)
         
+        conv_d5, conv_d3, conv_d1 = self.aux_convs(conv_d7)
+
+        """ TODO: talvez tenha que reduzir o número de canais nas camadas auxiliares """
+
         locs, class_score = self.pred_convs(conv_d56,
                                             conv_d28,
                                             conv_d14,
@@ -599,7 +404,7 @@ class SSDMobileNet(nn.Module):
                          'conv_d1':  1}
 
         # object scale w.r.t the size of the image
-        obj_scale = {'conv_d56': 0.05,
+        obj_scale = {'conv_d56': 0.1,
                      'conv_d28': 0.1,
                      'conv_d14': 0.2,
                      'conv_d7':  0.375,

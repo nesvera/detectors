@@ -404,7 +404,7 @@ class SSDMobileNet(nn.Module):
                          'conv_d1':  1}
 
         # object scale w.r.t the size of the image
-        obj_scale = {'conv_d56': 0.1,
+        obj_scale = {'conv_d56': 0.5,
                      'conv_d28': 0.1,
                      'conv_d14': 0.2,
                      'conv_d7':  0.375,

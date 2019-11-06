@@ -1,5 +1,6 @@
 import torch
 from torch2trt import torch2trt
+
 from models import SSD_MobileNet
 from utils import utils
 import time
@@ -39,3 +40,4 @@ if __name__ == "__main__":
     print("Average prediction time: {0:.4f}".format(prediction_time.get_average()))
     print("Min prediction time: {0:.4f}".format(prediction_time.min))
     print("Max prediction time: {0:.4f}".format(prediction_time.max))
+

@@ -130,6 +130,9 @@ def main():
         top_1_log = {}
         lr_log = {}
 
+        best_loss = 9000.
+        start_epoch = 0
+
     else:
         checkpoint = torch.load(checkpoint_path, map_location=device)
 
@@ -142,6 +145,11 @@ def main():
         top_5_log = {}
         top_1_log = {}
         lr_log = {}
+
+        best_loss = 9000
+        for i in val_loss_log.keys():
+            best_loss = min(best_loss, val_loss_log[i])
+
 
     model = model.to(device)
     priors_boxes = model.create_prior()
@@ -161,7 +169,6 @@ def main():
     input()
 
     # Keep track for improvement
-    best_loss = 9000.
     epochs_since_last_improvement = 0
 
     for epoch in range(start_epoch, config_max_epochs):

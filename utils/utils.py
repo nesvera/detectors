@@ -6,10 +6,14 @@ class Average():
         self.avg = 0
         self.sum = 0
         self.count = 0
+        self.min = 10000000
+        self.max = 0
 
     def add_value(self, value):
         self.sum += value
         self.count += 1
+        self.min = min(self.min, value)
+        self.max = max(self.max, value)
 
     def get_size(self):
         return self.count

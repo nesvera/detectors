@@ -116,8 +116,6 @@ def main():
         # load weights from trained classifier as a state_dict
         base_pretrained = torch.load(config_base_model_path, map_location=device)
 
-        base_pretrained = None
-
         # build detector
         model = SSD_MobileNet.SSDMobileNet(base_pretrained, config_num_classes)
 

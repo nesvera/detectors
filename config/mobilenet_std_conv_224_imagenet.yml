@@ -6,10 +6,10 @@ MODEL:
     CHECKPOINT: '/home/feaf-seat-1/Documents/nesvera/detectors/base_weights/mobilenet_std_224_04-11.pth.tar'
   
 TRAIN:
-  MAX_EPOCHS: 600
-  BATCH_SIZE: 64
+  MAX_EPOCHS: 1200
+  BATCH_SIZE: 16
   WORKERS: 8
-  PRINT_FREQ: 20
+  PRINT_FREQ: 100               # print each x batches
   OPTIMIZER:
     OPTIMIZER: 'ADAM'
     LEARNING_RATE: 0.001

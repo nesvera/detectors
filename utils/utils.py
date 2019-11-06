@@ -14,6 +14,9 @@ class Average():
     def get_size(self):
         return self.count
 
+    def get_sum(self):
+        return self.sum
+
     def get_average(self):
         if self.count > 0:
             self.avg = float(self.sum)/self.count

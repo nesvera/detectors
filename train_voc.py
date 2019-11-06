@@ -166,7 +166,7 @@ def main():
     best_loss = 9000.
     epochs_since_last_improvement = 0
 
-    for epoch in range(config_max_epochs):
+    for epoch in range(start_epoch, config_max_epochs):
 
         # ------------------------
         #          Train
@@ -202,8 +202,11 @@ def main():
             epochs_since_last_improvement = 0
             print("Melhoroooooouuuuu\n")
 
+        print('--------------------------------------------------------------------')
         print("Val loss: {0:.3f} - Best loss: {1:.3f} \n Epochs since last improvement: {2}\n"
               .format(val_loss, best_loss, epochs_since_last_improvement))
+        print('--------------------------------------------------------------------')
+        print()
 
         # ------------------------
         #        Save model 
@@ -242,7 +245,7 @@ def train(model, loader, criterion, optimizer, epoch, print_freq):
 
     # Data loading logging
     epoch_fetch_time = utils.Average()      
-    partial_fetch_time = utils.Average()    
+    batch_fetch_time = utils.Average()    
 
     epoch_train_time = utils.Average()      # forward prop. + backprop.
     partial_train_time = utils.Average()    # forward prop. + backprop., reset for each batch
@@ -253,7 +256,7 @@ def train(model, loader, criterion, optimizer, epoch, print_freq):
     for i, (images, boxes, labels, _) in enumerate(loader):
 
         epoch_fetch_time.add_value(time.time()-batch_start)
-        partial_fetch_time.add_value(time.time()-batch_start)
+        batch_fetch_time.add_value(time.time()-batch_start)
 
         images = images.to(device)
         boxes = [b.to(device) for b in boxes]
@@ -286,16 +289,26 @@ def train(model, loader, criterion, optimizer, epoch, print_freq):
         # print statistics
         if i % print_freq == 0:
             print('Epoch: [{0}] - Batch: [{1}/{2}]'.format(epoch, i, len(loader)))
-            print('Partial fetch time: {0:.4f} - Epoch fetch time: {1:.4f} (seconds/batch)'
-                 .format(partial_fetch_time.get_average(), epoch_fetch_time.get_average()))
-            print('Partial train time: {0:.4f} - Epoch train time: {1:.4f} (seconds/batch)'
-                 .format(partial_train_time.get_average(), epoch_train_time.get_average()))  
-            print('Loss: {0:.5f} - Current loss: {1:.5f}'.format(epoch_loss.get_average(), loss.item()))
+            print('Batch fetch time - Average: {0:.4f} - Total: {1:.4f} (seconds/batch)'
+                 .format(batch_fetch_time.get_average(), batch_fetch_time.get_sum()))
+            print('Batch train time - Average: {0:.4f} - Total: {1:.4f} (seconds/batch)'
+                 .format(partial_train_time.get_average(), partial_train_time.get_sum()))  
+            print('Loss: {0:.5f}'.format(epoch_loss.get_average()))
             print()
 
             # Reset measurment for each
-            partial_fetch_time = utils.Average()
+            batch_fetch_time = utils.Average()
             partial_train_time = utils.Average()
+
+    print('--------------------------------------------------------------------')
+    print('Training')    
+    print('--------------------------------------------------------------------')
+    print('Epoch [{0}] - Train time: {1:.4f} (seconds/epoch) - Loss: {2:.5f}'
+          .format(epoch, epoch_train_time.get_sum(), epoch_loss.get_average()))
+    print('--------------------------------------------------------------------')
+    print()
+
+    time.sleep(2)
 
     return epoch_loss.get_average()
 
@@ -303,8 +316,8 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
     
     model.eval()
 
-    partial_eval_time = utils.Average()
     epoch_eval_time = utils.Average()
+    batch_eval_time = utils.Average()   
 
     epoch_loss = utils.Average()        # loss average
 
@@ -327,19 +340,29 @@ def validation(model, loader, criterion, optimizer, epoch, print_freq):
 
             epoch_loss.add_value(eval_loss.item())
 
-            partial_eval_time.add_value(time.time()-batch_start)
             epoch_eval_time.add_value(time.time()-batch_start)
+            batch_eval_time.add_value(time.time()-batch_start)
+
             batch_start = time.time()
 
             # print statistics
             if i % print_freq == 0:
                 print('Validation - Epoch: [{0}] - Batch: [{1}/{2}]'.format(epoch, i, len(loader)))
-                print('Partial eval time: {0:.4f} - Epoch eval time: {1:.4f} (seconds/batch)'
-                     .format(partial_eval_time.get_average(), epoch_eval_time.get_average()))  
+                print('Evaluation time - Average: {0:.4f} - Total: {1:.4f} (seconds/batch)'
+                     .format(batch_eval_time.get_average(), batch_eval_time.get_sum()))  
                 print('Loss: {0:.5f} - Current loss: {1:.5f}'.format(epoch_loss.get_average(), eval_loss.item()))
                 print()
 
-                partial_eval_time = utils.Average()
+                batch_eval_time = utils.Average()
+
+    print('--------------------------------------------------------------------')
+    print('Evaluation')    
+    print('--------------------------------------------------------------------')
+    print('Epoch [{0}] - Train time: {1:.4f} (seconds/epoch) - Loss: {2:.5f}'
+          .format(epoch, epoch_eval_time.get_sum(), epoch_loss.get_average()))
+    print('--------------------------------------------------------------------')
+    print()
+
 
     return epoch_loss.get_average()
 

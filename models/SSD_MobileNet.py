@@ -404,9 +404,9 @@ class SSDMobileNet(nn.Module):
                          'conv_d1':  1}
 
         # object scale w.r.t the size of the image
-        obj_scale = {'conv_d56': 0.5,
-                     'conv_d28': 0.1,
-                     'conv_d14': 0.2,
+        obj_scale = {'conv_d56': 0.2,
+                     'conv_d28': 0.325,
+                     'conv_d14': 0.35,
                      'conv_d7':  0.375,
                      'conv_d5':  0.55,
                      'conv_d3':  0.725,
@@ -436,6 +436,7 @@ class SSDMobileNet(nn.Module):
                                              obj_scale[fmap]*sqrt(ratio),
                                              obj_scale[fmap]/sqrt(ratio)])
 
+                        '''
                         if ratio == 1.:
                             try:
                                 additional_scale = sqrt(obj_scale[fmap]*obj_scale[feat_maps[k+1]])
@@ -445,6 +446,7 @@ class SSDMobileNet(nn.Module):
                             priors_boxes.append([cx, cy,
                                                  additional_scale,
                                                  additional_scale])
+                        '''
 
         priors_boxes = torch.FloatTensor(priors_boxes).to(device)
         priors_boxes.clamp_(0,1)
@@ -458,6 +460,7 @@ class SSDMobileNet(nn.Module):
 
         pred_score = F.softmax(pred_score, dim=2)                   # [N, n_priors, n_classes]
 
+        # lists to store predictions for all images
         batch_boxes = list()
         batch_labels = list()
         batch_scores = list()
@@ -469,6 +472,7 @@ class SSDMobileNet(nn.Module):
             decoded_locs = utils.gcxgcy_to_cxcy(pred_locs[i], self.priors_cxcy)
             decoded_locs = utils.cxcy_to_xy(decoded_locs)
 
+            # lists to store predictions for an image
             image_boxes = list()
             image_labels = list()
             image_scores = list()
@@ -477,16 +481,32 @@ class SSDMobileNet(nn.Module):
             for c in range(1, self.num_classes):
 
                 # keep only predictions with scores above threshold
-                class_scores = pred_score[i][:, c]                      # [n_priors]
-                score_above_min = class_scores > min_score
+                class_scores = pred_score[i][:, c]                      # [n_priors] (FloatTensor)
+                score_above_min = class_scores > min_score              # [n_priors] (BoolTensor)
                 n_score_above_min = score_above_min.sum().item()
 
                 if n_score_above_min == 0:
                     continue
 
-                class_scores = class_scores[score_above_min]
-                class_decoded_locs = decoded_locs[score_above_min]
+                class_scores = class_scores[score_above_min]            # [n_qualified] (n_qualified <= n_priors)
+                class_decoded_locs = decoded_locs[score_above_min]      # [n_qualified, 4]
     
+                # Find overlap between each predicted box
+                overlap = utils.find_jaccard_overlap(class_decoded_locs, class_decoded_locs)
+
+                # Non-maximum supression 
+                suppress = torch.zeros((n_score_above_min), dtype=torch.bool).to(device)
+
+                for box in range(class_decoded_locs.size(0)):
+
+                    # 
+                    if suppress[box] == 1:
+                        continue
+
+                    suppress = suppress | (overlap[box] > max_overlap)
+
+                    suppress[box] = False
+
                 image_boxes.append(class_decoded_locs)
 
             # if there is no object, assign background for the image

@@ -123,7 +123,7 @@ def main():
         base_pretrained = torch.load(config_base_model_path, map_location=device)
 
         # build detector
-        model = SSD_MobileNet.SSDMobileNet(base_pretrained, config_num_classes)
+        model = SSD_MobileNet.SSDMobileNet(base_pretrained, config_num_classes, alpha=config_alpha)
 
         '''        
         optimizer = torch.optim.Adam(model.parameters(),

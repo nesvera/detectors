@@ -32,12 +32,51 @@ class Conv2dBn(nn.Module):
 
         return out
 
-class MobileNetV1Conv224(nn.Module):
+class Conv2dDW(nn.Module):
+
+    def __init__(self, in_channels, out_channels, kernel_size, padding, stride):
+        super(Conv2dDW, self).__init__()
+
+        # depthwise layer
+        self.conv_dw = nn.Conv2d(in_channels,
+                                 in_channels,
+                                 groups=in_channels,
+                                 kernel_size=kernel_size,
+                                 padding=padding,
+                                 stride=stride,
+                                 bias=False)
+
+        # batchnorm that follows the depthwise layer
+        self.conv_dw_bn = nn.BatchNorm2d(in_channels)
+
+        # pointwise layer
+        self.conv_pw = nn.Conv2d(in_channels,
+                                 out_channels,
+                                 kernel_size=1,
+                                 padding=0,
+                                 stride=1,
+                                 bias=False)
+
+        # batchnorm that follows th pointwise layer
+        self.conv_pw_bn = nn.BatchNorm2d(out_channels)
+
+    def forward(self, x):
+        # depthwise convolution
+        out = self.conv_dw(x)
+        out = self.conv_dw_bn(out)
+        out = F.relu(out)
+
+        # pointwise convolution
+        out = self.conv_pw(out)
+        out = self.conv_pw_bn(out)
+        out = F.relu(out)
+
+        return out
+
+class MobileNetV1DW224(nn.Module):
     """
     Model based on the MobileNet Architecture described in the paper 
     "MobileNets: Efficient Convolutional Neural Networks for Mobile 
-    Vision Applications" using standard convolutional layers due to
-    the speed problems w.r.t the depthwise separable layers
 
     Number of parameters (alpha=0.5): 
     ...
@@ -67,60 +106,60 @@ class MobileNetV1Conv224(nn.Module):
             The number of legs the animal (default is 4)
         """
 
-        super(MobileNetV1Conv224, self).__init__()
+        super(MobileNetV1DW224, self).__init__()
 
         self.alpha = alpha
 
         # Input tensor
         # [N, 3, 224, 224]
         
-        self.conv_1 = Conv2dBn(3, 
+        self.conv_1 = Conv2dDW(3, 
                                 ceil(self.alpha*32), 
                                 kernel_size=3, padding=1, stride=2)
         # [N, 32, 112, 112]
 
-        self.conv_2 = Conv2dBn(ceil(self.alpha*32), 
+        self.conv_2 = Conv2dDW(ceil(self.alpha*32), 
                                 ceil(self.alpha*64), 
                                 kernel_size=3, padding=1, stride=1)
         # [N, 64, 112, 112]
 
-        self.conv_3 = Conv2dBn(ceil(self.alpha*64), 
+        self.conv_3 = Conv2dDW(ceil(self.alpha*64), 
                                 ceil(self.alpha*128), 
                                 kernel_size=3, padding=1, stride=2)
         # [N, 128, 56, 56]
 
-        self.conv_4 = Conv2dBn(ceil(self.alpha*128),
+        self.conv_4 = Conv2dDW(ceil(self.alpha*128),
                                 ceil(self.alpha*128),
                                 kernel_size=3, padding=1, stride=1)
         # [N, 128, 56, 56]
 
-        self.conv_5 = Conv2dBn(ceil(self.alpha*128),
+        self.conv_5 = Conv2dDW(ceil(self.alpha*128),
                                 ceil(self.alpha*256),
                                 kernel_size=3, padding=1, stride=2)
         # [N, 256, 28, 28]
 
-        self.conv_6 = Conv2dBn(ceil(self.alpha*256),
+        self.conv_6 = Conv2dDW(ceil(self.alpha*256),
                                 ceil(self.alpha*256),
                                 kernel_size=3, padding=1, stride=1)
         # [N, 256, 28, 28]
 
-        self.conv_7 = Conv2dBn(ceil(self.alpha*256),
+        self.conv_7 = Conv2dDW(ceil(self.alpha*256),
                                 ceil(self.alpha*512),
                                 kernel_size=3, padding=1, stride=2)
         # [N, 512, 14, 14]
 
-        self.conv_8 = Conv2dBn(ceil(self.alpha*512),
+        self.conv_8 = Conv2dDW(ceil(self.alpha*512),
                                 ceil(self.alpha*512),
                                 kernel_size=3, padding=1, stride=1)
         # [N, 512, 14, 14]
         # repeated 5 times
 
-        self.conv_9 = Conv2dBn(ceil(self.alpha*512),
+        self.conv_9 = Conv2dDW(ceil(self.alpha*512),
                                 ceil(self.alpha*1024),
                                 kernel_size=3, padding=1, stride=2)
         # [N, 1024, 7, 7]
 
-        self.conv_10 = Conv2dBn(ceil(self.alpha*1024),
+        self.conv_10 = Conv2dDW(ceil(self.alpha*1024),
                                  ceil(self.alpha*1024),
                                  kernel_size=3, padding=4, stride=2)
         # [N, 1024, 7, 7]
@@ -187,7 +226,7 @@ class AuxiliaryConvolutions(nn.Module):
         # [N, 1024, 7, 7]
 
         # add auxiliary convolutions
-        self.aux_conv_1_1 = Conv2dBn(ceil(1024*alpha),
+        self.aux_conv_1_1 = Conv2dBn(1024*aplha,
                                      256,
                                      kernel_size=1, padding=0, stride=1)
         # [N, 256, 7, 7]
@@ -234,7 +273,7 @@ class AuxiliaryConvolutions(nn.Module):
         return conv_d5, conv_d3, conv_d1
 
 class PredictionConvolutions(nn.Module):
-    def __init__(self, n_classes, alpha):
+    def __init__(self, n_classes):
         super(PredictionConvolutions, self).__init__()
 
         self.n_classes = n_classes
@@ -249,19 +288,19 @@ class PredictionConvolutions(nn.Module):
                    'conv_d1':  4}
 
         # Localization prediction convolutions (predict offsets w.r.t prior-boxes)
-        self.loc_conv_d56 = nn.Conv2d(ceil(128*alpha), n_boxes['conv_d56']*4, kernel_size=3, padding=1)
-        self.loc_conv_d28 = nn.Conv2d(ceil(256*alpha), n_boxes['conv_d28']*4, kernel_size=3, padding=1)
-        self.loc_conv_d14 = nn.Conv2d(ceil(512*alpha), n_boxes['conv_d14']*4, kernel_size=3, padding=1)
-        self.loc_conv_d7  = nn.Conv2d(ceil(1024*alpha), n_boxes['conv_d7']*4,  kernel_size=3, padding=1)
+        self.loc_conv_d56 = nn.Conv2d(64, n_boxes['conv_d56']*4, kernel_size=3, padding=1)
+        self.loc_conv_d28 = nn.Conv2d(128, n_boxes['conv_d28']*4, kernel_size=3, padding=1)
+        self.loc_conv_d14 = nn.Conv2d(256, n_boxes['conv_d14']*4, kernel_size=3, padding=1)
+        self.loc_conv_d7  = nn.Conv2d(512, n_boxes['conv_d7']*4,  kernel_size=3, padding=1)
         self.loc_conv_d5  = nn.Conv2d(512, n_boxes['conv_d5']*4,  kernel_size=3, padding=1)
         self.loc_conv_d3  = nn.Conv2d(256, n_boxes['conv_d3']*4,  kernel_size=3, padding=1)
         self.loc_conv_d1  = nn.Conv2d(256, n_boxes['conv_d1']*4,  kernel_size=3, padding=1)
 
         # Class prediction convolutions (predict classes in localization boxes)
-        self.cl_conv_d56 = nn.Conv2d(ceil(128*alpha), n_boxes['conv_d56']*n_classes, kernel_size=3, padding=1)
-        self.cl_conv_d28 = nn.Conv2d(ceil(256*alpha), n_boxes['conv_d28']*n_classes, kernel_size=3, padding=1)
-        self.cl_conv_d14 = nn.Conv2d(ceil(512*alpha), n_boxes['conv_d14']*n_classes, kernel_size=3, padding=1)
-        self.cl_conv_d7 =  nn.Conv2d(ceil(1024*alpha), n_boxes['conv_d7']*n_classes,  kernel_size=3, padding=1)
+        self.cl_conv_d56 = nn.Conv2d(64, n_boxes['conv_d56']*n_classes, kernel_size=3, padding=1)
+        self.cl_conv_d28 = nn.Conv2d(128, n_boxes['conv_d28']*n_classes, kernel_size=3, padding=1)
+        self.cl_conv_d14 = nn.Conv2d(256, n_boxes['conv_d14']*n_classes, kernel_size=3, padding=1)
+        self.cl_conv_d7 =  nn.Conv2d(512, n_boxes['conv_d7']*n_classes,  kernel_size=3, padding=1)
         self.cl_conv_d5 =  nn.Conv2d(512, n_boxes['conv_d5']*n_classes,  kernel_size=3, padding=1)
         self.cl_conv_d3 =  nn.Conv2d(256, n_boxes['conv_d3']*n_classes,  kernel_size=3, padding=1)
         self.cl_conv_d1 =  nn.Conv2d(256, n_boxes['conv_d1']*n_classes,  kernel_size=3, padding=1)
@@ -351,7 +390,7 @@ class PredictionConvolutions(nn.Module):
 
 class SSDMobileNet(nn.Module):
 
-    def __init__(self, base_pretrained, num_classes, alpha=0.5):
+    def __init__(self, base_pretrained, num_classes, alpha=0.):
         super(SSDMobileNet, self).__init__()
 
         if num_classes <= 0:
@@ -359,11 +398,11 @@ class SSDMobileNet(nn.Module):
             exit(1)
 
         self.num_classes = num_classes
-        
+
         self.alpha = alpha
-        self.base_model = MobileNetV1Conv224(base_pretrained, alpha=self.alpha)
+        self.base_model = MobileNetV1DW224(base_pretrained, alpha=self.alpha)
         self.aux_convs = AuxiliaryConvolutions(alpha=alpha)
-        self.pred_convs = PredictionConvolutions(num_classes, alpha=alpha)
+        self.pred_convs = PredictionConvolutions(num_classes)
 
         self.priors_cxcy = self.create_prior()
 

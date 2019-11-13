@@ -16,8 +16,9 @@ def detect(model, in_image, min_score, max_overlap, top_k):
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
     
-    image = FT.normalize(FT.to_tensor(FT.resize(in_image, (224,224))), mean=mean, std=std)
-    image = image.to(device).unsqueeze(0)   # [1, 3, 224, 224]
+    #image = FT.normalize(FT.to_tensor(FT.resize(in_image, (224,224))), mean=mean, std=std)
+    #image = image.to(device).unsqueeze(0)   # [1, 3, 224, 224]
+    image = in_image
 
     # Forward prop
     pred_locs, pred_scores = model(image) 
@@ -29,10 +30,10 @@ def detect(model, in_image, min_score, max_overlap, top_k):
 
     det_boxes = det_boxes[0].to('cpu')
 
-    original_dims = torch.FloatTensor([in_image.width, in_image.height, in_image.width, in_image.height]).unsqueeze(0)
+    original_dims = torch.FloatTensor([224, 224, 224, 224]).unsqueeze(0)
     det_boxes = det_boxes*original_dims
 
-    return det_boxes, 0, 0
+    return det_boxes, det_labels, det_scores
 
 if __name__ == "__main__":
 
@@ -44,30 +45,43 @@ if __name__ == "__main__":
     summary(model, (3,224,224))
     
     # receive image from camera
-    cap = cv2.VideoCapture("/home/feaf-seat-1/Downloads/carros.jpeg")
+    #cap = cv2.VideoCapture("/home/feaf-seat-1/Downloads/carros.jpeg")
 
-    while True:
-        ret, frame = cap.read()
+    data_folder = "/home/feaf-seat-1/Documents/nesvera/object_detection/a-PyTorch-Tutorial-to-Object-Detection"
+    train_dataset = datasets.PascalVOCDataset(data_folder,
+                                     split='train',
+                                     keep_difficult=True)
+    
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+                                               batch_size=1,
+                                               shuffle=True,
+                                               collate_fn=train_dataset.collate_fn,
+                                               num_workers=2,
+                                               pin_memory=True)
 
-        if ret == False:
-            break
+    for i in range(len(train_dataset)):
 
-        # convert (numpy bgr -> numpy rgb -> PIL image)
-        pil_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pil_image = Image.fromarray(pil_image)
+        (images, boxes, labels, _) = train_dataset[i]
 
-        bounding_boxes, labels, scores = detect(model, pil_image, min_score=0.15, max_overlap=0.5, top_k=200)
+        images = images.unsqueeze(0).to(device)
 
-        for bb in bounding_boxes:
-            bb = bb.detach().numpy().astype('int')
-            frame = cv2.rectangle(frame, (bb[0], bb[1]), (bb[2], bb[3]), (0,0,255), 2)
-
-            print(bb)
-
-        print("caaaaa")
-        cv2.imshow("image", frame)
-        cv2.waitKey(0)
+        pred_bb, pred_labels, pred_scores = detect(model, images, min_score=0.7, max_overlap=0.2, top_k=200)
         
+        #print(pred_scores)
+        print("True labels: ", labels)
+        print("Pred labels: ", pred_labels)
+        print()
+
+        image = images.to('cpu').squeeze(0).permute(1,2,0).numpy()
+
+        for bb in pred_bb:
+            bb = bb.detach().numpy().astype('int')
+            image = cv2.rectangle(image.copy(), (bb[0], bb[1]), (bb[2], bb[3]), (0,0,255), 2)
+
+            
+            cv2.imshow("image", image)
+            cv2.waitKey(0)
+
             
 
 

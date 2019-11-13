@@ -45,6 +45,7 @@ def main():
                                                num_workers=2,
                                                pin_memory=True)
 
+
     for i in range(len(train_dataset)):
 
         print("priors: ", priors_boxes_cxcy.size())

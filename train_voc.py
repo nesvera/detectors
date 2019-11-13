@@ -3,7 +3,7 @@ import torch.nn as nn
 from torchsummary import summary
 
 from classifiers.models import MobileNet
-from models import SSD_MobileNet
+from models import SSD_MobileNet, SSD_VGG_16
 from utils import datasets, loss_function, utils
 
 import argparse
@@ -41,6 +41,7 @@ def main():
     config_input_size =         config['MODEL']['IMAGE_SIZE']
     #config_num_classes =        config['MODEL']['NUM_CLASSES']
     config_base_model_path =    config['MODEL']['BASE_MODEL']['CHECKPOINT']
+    config_alpha =              config['MODEL']['BASE_MODEL']['ALPHA']
     config_optimizer =          config['TRAIN']['OPTIMIZER']['OPTIMIZER']
     config_lr =                 config['TRAIN']['OPTIMIZER']['LEARNING_RATE']
     config_momentum =           config['TRAIN']['OPTIMIZER']['MOMENTUM']
@@ -56,8 +57,6 @@ def main():
     config_train_batch =        config['TRAIN']['BATCH_SIZE']
     config_val_batch =          config['TEST']['BATCH_SIZE']
     config_print_freq =         config['TRAIN']['PRINT_FREQ']
-    config_train_dataset =      config['DATASET']['TRAIN']
-    config_val_dataset =        config['DATASET']['VALID']
     config_experiment_path =    config['EXP_DIR']
     config_checkpoint =         config['RESUME_CHECKPOINT']
 
@@ -73,13 +72,18 @@ def main():
     print("Press enter to continue")
     input()
 
+    dims=(config_input_size[0], config_input_size[1])
+    print(dims)
+    input()
+
     # ------------------------
     #       Dataloaders
     # ------------------------  
     data_folder = "/home/feaf-seat-1/Documents/nesvera/object_detection/a-PyTorch-Tutorial-to-Object-Detection"
     train_dataset = datasets.PascalVOCDataset(data_folder,
                                      split='train',
-                                     keep_difficult=True)
+                                     keep_difficult=True,
+                                     dims=(config_input_size[0], config_input_size[1]))
     
     val_dataset = datasets.PascalVOCDataset(data_folder,
                                    split='test',
@@ -104,14 +108,16 @@ def main():
     # ------------------------
     #    Build/Load model
     # ------------------------
-    # Initialize a new model
-    if config_checkpoint == "":
-        # load base model
-        if os.path.exists(config_base_model_path) == False:
-            print("Error: base model file was not find!")
-            exit(1)
+    print(config_base_model_path)
 
-        print(config_base_model_path)
+    if config_model_name == "detector_mobilenet":
+  
+        # Initialize a new model
+        if config_checkpoint == "":
+            # load base model
+            if os.path.exists(config_base_model_path) == False:
+                print("Error: base model file was not find!")
+                exit(1)
 
         # load weights from trained classifier as a state_dict
         base_pretrained = torch.load(config_base_model_path, map_location=device)
@@ -119,9 +125,43 @@ def main():
         # build detector
         model = SSD_MobileNet.SSDMobileNet(base_pretrained, config_num_classes)
 
+        '''        
         optimizer = torch.optim.Adam(model.parameters(),
-                                     lr=config_lr,
-                                     weight_decay=config_weight_decay)
+                                        lr=config_lr,
+                                        weight_decay=config_weight_decay)
+        '''
+
+        # Initialize the optimizer with twice the default learning rate for biases
+        biases = list()
+        not_biases = list()
+
+        for param_name, param in model.named_parameters():
+            if param.requires_grad:
+                if param_name.endswith('.bias'):
+                    biases.append(param)
+                else:
+                    not_biases.append(param)
+
+        optimizer = torch.optim.SGD(params=[{'params': biases, 'lr': 2*config_lr}, {'params': not_biases}],
+                                    lr=config_lr, momentum=config_momentum, weight_decay=config_weight_decay)
+
+    elif config_model_name == "detector_vgg_16":
+    
+        model = SSD_VGG_16.SSD300(n_classes=config_num_classes)
+
+        # Initialize the optimizer with twice the default learning rate for biases
+        biases = list()
+        not_biases = list()
+
+        for param_name, param in model.named_parameters():
+            if param.requires_grad:
+                if param_name.endswith('.bias'):
+                    biases.append(param)
+                else:
+                    not_biases.append(param)
+
+        optimizer = torch.optim.SGD(params=[{'params': biases, 'lr': 2*config_lr}, {'params': not_biases}],
+                                    lr=config_lr, momentum=config_momentum, weight_decay=config_weight_decay)
 
         # Keep track of losses
         train_loss_log = {}
@@ -163,7 +203,7 @@ def main():
     print("----------------------------------------------------------------")
     print("--------------------- Model summary ----------------------------")
     print("----------------------------------------------------------------")
-    summary(model, (3, 224, 224))
+    summary(model, (config_input_size[2], config_input_size[0], config_input_size[1]))
 
     print("Press ENTER to continue")
     input()

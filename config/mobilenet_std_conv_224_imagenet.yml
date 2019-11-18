@@ -3,8 +3,8 @@ MODEL:
   IMAGE_SIZE: [224, 224, 3]
   NUM_CLASSES: 20
   BASE_MODEL:
-    ALPHA: 0.5
-    CHECKPOINT: '/home/feaf-seat-1/Documents/nesvera/detectors/base_weights/mobilenet_std_224_04-11.pth.tar'
+    ALPHA: 1.0
+    CHECKPOINT: '/home/feaf-seat-1/Documents/nesvera/detectors/base_weights/mobilenet_224_a1-0.pth.tar'
   
 TRAIN:
   MAX_EPOCHS: 2400
@@ -13,7 +13,7 @@ TRAIN:
   PRINT_FREQ: 100               # print each x batches
   OPTIMIZER:
     OPTIMIZER: 'SGD'
-    LEARNING_RATE: 0.0001
+    LEARNING_RATE: 0.0005
     MOMENTUM: 0.9
     WEIGHT_DECAY: 0.0005
   REPRODUCIBILITY:
@@ -32,7 +32,8 @@ TEST:
 
 EXP_DIR: './experiments/'
 LOG_DIR: './experiments/'
-RESUME_CHECKPOINT: 'BEST_detector_mobilenet_dw_224.pth.tar'
+RESUME_CHECKPOINT: 'BEST_detector_mobilenet.pth.tar'
+#RESUME_CHECKPOINT: 'detector_mobilenet.pth.tar'
 
 # lr_new = lr * ( 1 - lr_decay )^(cycle)
 # cycle_new = cycle * (1 + cycle_mult)^(cycle)

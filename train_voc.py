@@ -60,22 +60,6 @@ def main():
     config_experiment_path =    config['EXP_DIR']
     config_checkpoint =         config['RESUME_CHECKPOINT']
 
-    checkpoint_path = config_experiment_path + "/" + config_model_name
-    checkpoint_path += "/" + config_checkpoint
-
-    if os.path.exists(checkpoint_path) == False:
-        config_checkpoint = ""
-        print("Warning: Best checkpoint was not found!")
-    else:
-        print("Warning: Loading checkpoint!")
-
-    print("Press enter to continue")
-    input()
-
-    dims=(config_input_size[0], config_input_size[1])
-    print(dims)
-    input()
-
     # ------------------------
     #       Dataloaders
     # ------------------------  
@@ -108,72 +92,82 @@ def main():
     # ------------------------
     #    Build/Load model
     # ------------------------
-    print(config_base_model_path)
+    # Keep track of losses
+    train_loss_log = {}
+    val_loss_log = {}
+    top_5_log = {}
+    top_1_log = {}
+    lr_log = {}
 
-    if config_model_name == "detector_mobilenet":
-  
-        # Initialize a new model
-        if config_checkpoint == "":
-            # load base model
-            if os.path.exists(config_base_model_path) == False:
-                print("Error: base model file was not find!")
-                exit(1)
+    best_loss = 9000.
+    start_epoch = 0
 
-        # load weights from trained classifier as a state_dict
-        base_pretrained = torch.load(config_base_model_path, map_location=device)
+    checkpoint_path = config_experiment_path + "/" + config_model_name
+    checkpoint_path += "/" + config_checkpoint
 
-        # build detector
-        model = SSD_MobileNet.SSDMobileNet(base_pretrained, config_num_classes, alpha=config_alpha)
-
-        '''        
-        optimizer = torch.optim.Adam(model.parameters(),
-                                        lr=config_lr,
-                                        weight_decay=config_weight_decay)
-        '''
-
-        # Initialize the optimizer with twice the default learning rate for biases
-        biases = list()
-        not_biases = list()
-
-        for param_name, param in model.named_parameters():
-            if param.requires_grad:
-                if param_name.endswith('.bias'):
-                    biases.append(param)
-                else:
-                    not_biases.append(param)
-
-        optimizer = torch.optim.SGD(params=[{'params': biases, 'lr': 2*config_lr}, {'params': not_biases}],
-                                    lr=config_lr, momentum=config_momentum, weight_decay=config_weight_decay)
-
-    elif config_model_name == "detector_vgg_16":
+    # load checkpoint or create new model
+    if os.path.exists(checkpoint_path) == False:
+        config_checkpoint = ""
+        print("Warning: Checkpoint was not found!")
     
-        model = SSD_VGG_16.SSD300(n_classes=config_num_classes)
+        if config_model_name == "detector_mobilenet":
+  
+            # Initialize a new model
+            if config_checkpoint == "":
+                # load base model
+                if os.path.exists(config_base_model_path) == False:
+                    print("Error: base model file was not find!")
+                    exit(1)
 
-        # Initialize the optimizer with twice the default learning rate for biases
-        biases = list()
-        not_biases = list()
+            print("Warning: Loading base weights")
+            print(config_base_model_path)
 
-        for param_name, param in model.named_parameters():
-            if param.requires_grad:
-                if param_name.endswith('.bias'):
-                    biases.append(param)
-                else:
-                    not_biases.append(param)
+            # load weights from trained classifier as a state_dict
+            base_pretrained = torch.load(config_base_model_path, map_location=device)
 
-        optimizer = torch.optim.SGD(params=[{'params': biases, 'lr': 2*config_lr}, {'params': not_biases}],
-                                    lr=config_lr, momentum=config_momentum, weight_decay=config_weight_decay)
+            # build detector
+            model = SSD_MobileNet.SSDMobileNet(base_pretrained, config_num_classes, alpha=config_alpha)
 
-        # Keep track of losses
-        train_loss_log = {}
-        val_loss_log = {}
-        top_5_log = {}
-        top_1_log = {}
-        lr_log = {}
+            '''        
+            optimizer = torch.optim.Adam(model.parameters(),
+                                            lr=config_lr,
+                                            weight_decay=config_weight_decay)
+            '''
 
-        best_loss = 9000.
-        start_epoch = 0
+            # Initialize the optimizer with twice the default learning rate for biases
+            biases = list()
+            not_biases = list()
+
+            for param_name, param in model.named_parameters():
+                if param.requires_grad:
+                    if param_name.endswith('.bias'):
+                        biases.append(param)
+                    else:
+                        not_biases.append(param)
+
+            optimizer = torch.optim.SGD(params=[{'params': biases, 'lr': 2*config_lr}, {'params': not_biases}],
+                                        lr=config_lr, momentum=config_momentum, weight_decay=config_weight_decay)
+
+        elif config_model_name == "detector_vgg_16":
+        
+            model = SSD_VGG_16.SSD300(n_classes=config_num_classes)
+
+            # Initialize the optimizer with twice the default learning rate for biases
+            biases = list()
+            not_biases = list()
+
+            for param_name, param in model.named_parameters():
+                if param.requires_grad:
+                    if param_name.endswith('.bias'):
+                        biases.append(param)
+                    else:
+                        not_biases.append(param)
+
+            optimizer = torch.optim.SGD(params=[{'params': biases, 'lr': 2*config_lr}, {'params': not_biases}],
+                                        lr=config_lr, momentum=config_momentum, weight_decay=config_weight_decay)
 
     else:
+        print("Warning: Loading checkpoint!")
         checkpoint = torch.load(checkpoint_path, map_location=device)
 
         start_epoch =       checkpoint['epoch'] + 1
@@ -189,7 +183,12 @@ def main():
         best_loss = 9000
         for i in val_loss_log.keys():
             best_loss = min(best_loss, val_loss_log[i])
+        
+        print('best', best_loss)
 
+
+    print("Press enter to continue")
+    input()
 
     model = model.to(device)
     priors_boxes = model.create_prior()

@@ -37,7 +37,7 @@ def detect(model, in_image, min_score, max_overlap, top_k):
 
 if __name__ == "__main__":
 
-    checkpoint = torch.load("/home/feaf-seat-1/Documents/nesvera/detectors/experiments/detector_mobilenet_dw_224/BEST_detector_mobilenet_dw_224.pth.tar")
+    checkpoint = torch.load("/home/feaf-seat-1/Documents/nesvera/detectors/experiments/detector_mobilenet/detector_mobilenet.pth.tar")
     model = checkpoint['model']
     model = model.to(device)
     model.eval()
@@ -48,6 +48,8 @@ if __name__ == "__main__":
     #cap = cv2.VideoCapture("/home/feaf-seat-1/Downloads/carros.jpeg")
 
     data_folder = "/home/feaf-seat-1/Documents/nesvera/object_detection/a-PyTorch-Tutorial-to-Object-Detection"
+    
+    '''    
     train_dataset = datasets.PascalVOCDataset(data_folder,
                                      split='train',
                                      keep_difficult=True)
@@ -58,6 +60,19 @@ if __name__ == "__main__":
                                                collate_fn=train_dataset.collate_fn,
                                                num_workers=2,
                                                pin_memory=True)
+    '''
+
+    train_dataset = datasets.PascalVOCDataset(data_folder,
+                                   split='test',
+                                   keep_difficult=True)
+
+    train_loader = torch.utils.data.DataLoader(train_dataset,
+                                             batch_size=1,
+                                             shuffle=True,
+                                             collate_fn=train_dataset.collate_fn,
+                                             num_workers=4,
+                                             pin_memory=True)
+        
 
     for i in range(len(train_dataset)):
 
@@ -65,7 +80,7 @@ if __name__ == "__main__":
 
         images = images.unsqueeze(0).to(device)
 
-        pred_bb, pred_labels, pred_scores = detect(model, images, min_score=0.7, max_overlap=0.2, top_k=200)
+        pred_bb, pred_labels, pred_scores = detect(model, images, min_score=0.3, max_overlap=0.1, top_k=200)
         
         #print(pred_scores)
         print("True labels: ", labels)

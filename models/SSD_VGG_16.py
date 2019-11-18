@@ -40,10 +40,10 @@ class VGGBase(nn.Module):
 
         self.conv3_1 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
         self.conv3_2 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.conv3_3 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.conv3_3 = nn.Conv2d(256, 256, kernel_size=3, padding=2)
         #[N,256,75,75]
 
-        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2, ceil_mode=True)  # ceiling (not floor) here for even dims
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)  # ceiling (not floor) here for even dims
         #[N,256,38,38]
 
         self.conv4_1 = nn.Conv2d(256, 512, kernel_size=3, padding=1)

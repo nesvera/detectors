@@ -207,6 +207,13 @@ def main():
     print("Press ENTER to continue")
     input()
 
+    # Keep track of learning rate
+    lr_schedule = utils.SGDR(min_lr=config_sgdr_min_lr,
+                           max_lr=config_sgdr_max_lr,
+                           lr_decay=config_sgdr_lr_decay,
+                           epochs_per_cycle=config_sgdr_cycle,
+                           mult_factor=config_sgdr_cycle_mult)
+
     # Keep track for improvement
     epochs_since_last_improvement = 0
 
@@ -282,6 +289,22 @@ def main():
         if epoch == (config_max_epochs-1):
             exp_filename = exp_folder + '/LAST_' + config_model_name + '.pth.tar'
             torch.save(state, exp_filename)
+
+        # ------------------------
+        #  Learning rate schedule 
+        # ------------------------
+        if config_lr_scheduler == True:
+            config_lr = lr_schedule.update()
+
+            for opt in optimizer.param_groups:
+                opt['lr'] = config_lr
+
+            print('LR Scheduler - Cycle: [{0}/{1}]'
+                  .format(lr_schedule.epoch_since_restart, lr_schedule.epochs_per_cycle))
+            print('LR: {0:.5f}\n'.format(config_lr))
+
+        else:
+            print("Sem lr scheduler\n")
 
 def train(model, loader, criterion, optimizer, epoch, print_freq):
     

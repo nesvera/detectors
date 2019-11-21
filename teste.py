@@ -37,7 +37,7 @@ def detect(model, in_image, min_score, max_overlap, top_k):
 
 if __name__ == "__main__":
 
-    checkpoint = torch.load("/home/feaf-seat-1/Documents/nesvera/detectors/experiments/detector_mobilenet/detector_mobilenet.pth.tar")
+    checkpoint = torch.load("/home/feaf-seat-1/Documents/nesvera/detectors/experiments/detector_mobilenet/BEST_detector_mobilenet.pth.tar")
     model = checkpoint['model']
     model = model.to(device)
     model.eval()
@@ -85,6 +85,7 @@ if __name__ == "__main__":
         #print(pred_scores)
         print("True labels: ", labels)
         print("Pred labels: ", pred_labels)
+        print("Pred Scores: ", pred_scores)
         print()
 
         image = images.to('cpu').squeeze(0).permute(1,2,0).numpy()

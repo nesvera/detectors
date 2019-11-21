@@ -13,7 +13,7 @@ TRAIN:
   PRINT_FREQ: 100               # print each x batches
   OPTIMIZER:
     OPTIMIZER: 'SGD'
-    LEARNING_RATE: 0.0005
+    LEARNING_RATE: 0.002
     MOMENTUM: 0.9
     WEIGHT_DECAY: 0.0005
   REPRODUCIBILITY:
@@ -21,11 +21,11 @@ TRAIN:
     SEED: 0
   LR_SCHEDULER:
     LR_SCHEDULER: True
-    MIN_LR: 0.00005
-    MAX_LR: 0.0001
+    MIN_LR: 0.00001
+    MAX_LR: 0.002
     LR_DECAY: 0.00              # e.g. 0.2 = decrease 20% the max_lr by cycle
-    CYCLE: 1200                   # number of epochs for each cycle
-    CYCLE_MULT: 0.01            # e.g. 0.2 = increase 20% the cycle length 
+    CYCLE: 200                   # number of epochs for each cycle
+    CYCLE_MULT: 0.00            # e.g. 0.2 = increase 20% the cycle length 
 
 TEST:
   BATCH_SIZE: 32

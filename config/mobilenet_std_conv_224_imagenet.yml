@@ -13,7 +13,7 @@ TRAIN:
   PRINT_FREQ: 100               # print each x batches
   OPTIMIZER:
     OPTIMIZER: 'SGD'
-    LEARNING_RATE: 0.002
+    LEARNING_RATE: 0.002        # 0.001
     MOMENTUM: 0.9
     WEIGHT_DECAY: 0.0005
   REPRODUCIBILITY:

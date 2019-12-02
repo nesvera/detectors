@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torchsummary import summary
 
-from classifiers.models import MobileNet
 from models import SSD_MobileNet, SSD_VGG_16
 from utils import datasets, loss_function, utils
 
